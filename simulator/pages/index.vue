@@ -10,7 +10,7 @@
   import axios from 'axios'
 
   const connection = ref("not connected");
-  const url = 'http://localhost:8080/testConnection';
+  const url = 'http://127.0.0.1:8080/test_connection';
 
   onMounted(async () => {
     const response = await axios.get(url);
