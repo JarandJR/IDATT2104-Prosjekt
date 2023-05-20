@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Simulator {
     pub drones: u32
 }
