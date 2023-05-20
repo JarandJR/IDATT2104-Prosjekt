@@ -129,7 +129,8 @@ impl Drone {
 
     fn send_move_request(&self, neighbor: &Neighbor, target: &Coordinate) {
         let move_request = format!("MOVE_REQUEST {} {} {} {} {}", self.id, self.position.x, self.position.y, target.x, target.y);
-        let neighbor_address: SocketAddr = format!("127.0.0.1:808{}", neighbor.id).parse().unwrap();
+        let port = STANDARD_PORT + neighbor.id as u32;
+        let neighbor_address: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
 
         self.socket.send_to(move_request.as_bytes(), neighbor_address)
             .unwrap();
@@ -232,7 +233,8 @@ impl Drone {
 
     fn send_message(&self, message: &str, to: usize) {
         let message = format!("MESSAGE {} {}", self.id, message);
-        let neighbor_address: SocketAddr = format!("127.0.0.1:808{}", to).parse().unwrap();
+        let port = STANDARD_PORT + to as u32;
+        let neighbor_address: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
 
         self.socket.send_to(message.as_bytes(), neighbor_address)
             .unwrap();
