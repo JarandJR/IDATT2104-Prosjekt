@@ -105,12 +105,6 @@ impl Drone {
         }
     }
 
-    fn calculate_distance(&self, other_position: &Coordinate) -> f32 {
-        let dx = other_position.x - self.position.x;
-        let dy = other_position.y - self.position.y;
-        (dx * dx + dy * dy).sqrt()
-    }
-
     fn send_position_to_simulator(&self) {
         let drone_data = DroneData {
             id: self.id,
@@ -165,6 +159,18 @@ impl Drone {
                 message_parts[4].parse::<f32>(),
                 message_parts[5].parse::<f32>(),
             ) {
+                let mut request_is_neighbour = false;
+                for neighbor in &self.routing_table.neighbors {
+                    if neighbor.id == requester_id {
+                        request_is_neighbour = true;
+                    }
+                }
+
+                if request_is_neighbour {
+                    println!("Requester is not a neighbour: {}", requester_id);
+                    return;
+                }
+
                 let target = Coordinate {
                     x: target_x,
                     y: target_y,
