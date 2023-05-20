@@ -167,7 +167,7 @@ impl Drone {
                     }
                 }
 
-                if request_is_neighbour {
+                if !request_is_neighbour {
                     println!("Requester is not a neighbour: {}", requester_id);
                     return;
                 }
@@ -206,9 +206,21 @@ impl Drone {
             return None;
         }
 
-        let target = serde_json::from_str(message).ok();
-        println!("Received target from simulator: {:?}", target);
-        target
+        let message_parts: Vec<&str> = message.trim().split_whitespace().collect();
+        if let (Ok(neighbor_x), Ok(neighbor_y)) = (
+            message_parts[1].parse::<f32>(),
+            message_parts[2].parse::<f32>(),
+        ) {
+            let target = Coordinate {
+                x: neighbor_x,
+                y: neighbor_y,
+            };
+            println!("Received target from simulator: {:?}", target);
+            Option::from(target)
+        } else {
+            println!("Error reading coordinate");
+            None
+        }
     }
 
     fn receive_and_send_message(&mut self, message: &str) {
@@ -226,13 +238,13 @@ impl Drone {
     fn send_messages(&self, sender:usize,  message: String) {
         for neighbor in &self.routing_table.neighbors {
             if neighbor.id != sender {
-                self.send_message(&message, neighbor.id);
+                self.send_message(&message, neighbor.id, "MESSAGE");
             }
         }
     }
 
-    fn send_message(&self, message: &str, to: usize) {
-        let message = format!("MESSAGE {} {}", self.id, message);
+    fn send_message(&self, message: &str, to: usize, message_type: &str) {
+        let message = format!("{} {} {}", message_type, self.id, message);
         let port = STANDARD_PORT + to as u32;
         let neighbor_address: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
 
@@ -255,8 +267,19 @@ impl Drone {
             };
 
             if self.is_within_communication_radius(neighbor_x, neighbor_y) {
-                println!("Neighbour {} added", id);
-                self.routing_table.neighbors.push(Neighbor {id, position });
+                let mut contains = false;
+                for neighbor in &self.routing_table.neighbors {
+                    if neighbor.id == id {
+                        contains = true;
+                    }
+                }
+
+                if !contains {
+                    println!("Neighbour {} added", id);
+                    self.routing_table.neighbors.push(Neighbor {id, position });
+                    let neighbor_message = format!("{} {}", neighbor_x, neighbor_y);
+                    self.send_message(&neighbor_message, id, "ADD_NEIGHBOUR")
+                }
             } else {
                 println!("Neighbour to far away.");
             }
@@ -288,6 +311,10 @@ impl Drone {
                 }
             }
         }
-        self.send_finished_to_simulator()
+
+        if self.go_home {
+            self.send_finished_to_simulator();
+            self.send_messages(self.id, String::from("TEST"));
+        }
     }
 }
