@@ -4,6 +4,7 @@ use std::net::{SocketAddr, UdpSocket};
 
 const STANDARD_PORT: u32 = 8080;
 const COMMUNICATION_RADIUS: f32 = 100.0;
+const DRONE_SPEED:f32 = 5.0;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Coordinate {
@@ -32,7 +33,6 @@ struct Neighbor {
 pub struct Drone {
     id: usize,
     position: Coordinate,
-    speed: f32,
     socket: UdpSocket,
     simulator_address: SocketAddr,
     routing_table: RoutingTable,
@@ -43,7 +43,6 @@ impl Drone {
     pub fn new(
         id: usize,
         position: Coordinate,
-        speed: f32,
         simulator_address: SocketAddr,
         go_home: bool,
     ) -> io::Result<Drone> {
@@ -52,7 +51,6 @@ impl Drone {
         Ok(Drone {
             id,
             position,
-            speed,
             socket,
             simulator_address,
             routing_table: RoutingTable {
@@ -67,7 +65,7 @@ impl Drone {
         let dy = target.y - self.position.y;
         let distance = (dx * dx + dy * dy).sqrt();
 
-        let steps = (distance / self.speed).ceil() as u32;
+        let steps = (distance / DRONE_SPEED).ceil() as u32;
         let mut step_x = dx / steps as f32;
         let mut step_y = dy / steps as f32;
 

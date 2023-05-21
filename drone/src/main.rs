@@ -1,44 +1,34 @@
 mod drone;
 
-use std::error::Error;
-use std::io::{self};
+use std::env;
+use std::io;
 use std::net::SocketAddr;
-use std::str::FromStr;
 
 use drone::{Coordinate, Drone};
 
 fn main() -> io::Result<()> {
-    // User input for drone configuration
-    println!("Enter drone ID:");
-    let id: usize = read_input()?;
-    println!("Enter initial position (x):");
-    let x: f32 = read_input()?;
-    println!("Enter initial position (y):");
-    let y: f32 = read_input()?;
-    let position: Coordinate = Coordinate { x, y };
-    println!("Enter speed:");
-    let speed: f32 = read_input()?;
+    // Collect command-line arguments
+    let args: Vec<String> = env::args().collect();
+    
+    // Check if the required number of arguments is provided
+    if args.len() < 4 {
+        eprintln!("Usage: program_name id x y speed");
+        std::process::exit(1);
+    }
+    
+    // Parse command-line arguments
+    let id: usize = args[1].parse().expect("Could not parse drone ID");
+    let x: f32 = args[2].parse().expect("Could not parse initial position (x)");
+    let y: f32 = args[3].parse().expect("Could not parse initial position (y)");
 
     // Address of the simulator program
     let simulator_address: SocketAddr = "127.0.0.1:7878".parse().unwrap();
 
-    let mut drone = Drone::new(id, position, speed, simulator_address, false)?;
+    let position = Coordinate { x, y };
+
+    let mut drone = Drone::new(id, position, simulator_address, false)?;
 
     drone.run();
 
     Ok(())
-}
-
-fn read_input<T>() -> io::Result<T>
-where
-    T: FromStr,
-    T::Err: Error + Send + Sync + 'static,
-{
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    input
-        .trim()
-        .parse()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
 }
