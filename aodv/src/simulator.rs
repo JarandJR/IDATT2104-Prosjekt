@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket};
+use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display}};
 
 #[derive(Debug,Clone)]
 struct Graph {
@@ -132,14 +132,35 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 
 pub fn run_drones(sim: &Simulator) {
     for drone in &sim.drones {
-        run_drone_in_docker(drone.id, drone.x_coordinates, drone.y_coordinates).expect("Failed to run drone");
+        run_drone_in_docker_unix(drone.id, drone.x_coordinates, drone.y_coordinates).expect("Failed to run drone");
     }
     make_edges(sim);
+
+    // let output = if cfg!(target_os = "windows") {
+    //     run_drone_in_docker_windows();
+    // } else {
+    //     run_drone_in_docker_unix(1, 1, 1);
+    // };
 }
 
-fn run_drone_in_docker(id:usize, x: usize, y:usize) -> io::Result<()> {
+fn get_path_to_drone() -> String {
+    let current_dir = env::current_dir().expect("could not find the correct file path");
+    let project_path = PathBuf::from(current_dir).join("../drone")
+                                .canonicalize()
+                                .expect("could not modefy the file path");
+    let path: String = format!("{}", project_path.display());
+    path
+}
+
+fn run_drone_in_docker_windows() {
+    println!("her skal det kjøres i windows");
+}
+
+fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
     // Path to your Rust project
-    let project_path = "/home/vetle/fjerdesemester/Fullstack/IDATT2104-Prosjekt/drone";
+
+   
+    let project_path = get_path_to_drone();
 
     // Docker command to run `cargo run` in the container
     let docker_command = format!(
@@ -161,7 +182,6 @@ fn run_drone_in_docker(id:usize, x: usize, y:usize) -> io::Result<()> {
         .arg(&escaped_docker_command)
         .arg("\"")
         .spawn()?;
-
     Ok(())
 }
 
