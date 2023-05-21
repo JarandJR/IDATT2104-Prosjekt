@@ -1,4 +1,18 @@
-use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display}};
+use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display}, thread, sync::{Mutex, Arc}};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Coordinate {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct DroneData {
+    id: usize,
+    x: f32,
+    y: f32,
+}
 
 #[derive(Debug,Clone)]
 struct Graph {
@@ -15,15 +29,15 @@ impl Graph {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Drone {
     id: usize,
-    x_coordinates: usize,
-    y_coordinates: usize,
+    x_coordinates: f32,
+    y_coordinates: f32,
 }
 
 impl Drone {
-    fn new(id: usize, x_coordinates: usize, y_coordinates: usize) -> Drone {
+    fn new(id: usize, x_coordinates: f32, y_coordinates: f32) -> Drone {
         Drone {
             id,
             x_coordinates,
@@ -35,7 +49,8 @@ impl Drone {
 #[derive(Clone)]
 pub struct Simulator {
     graph: Graph,
-    pub drones: Vec<Drone>
+    pub drones: Arc<Mutex<Vec<Drone>>>,
+    finished: Arc<Mutex<bool>>
 }
 
 impl Simulator {
@@ -46,16 +61,85 @@ impl Simulator {
 
         let connection_file_path = "kobling_droner.txt";
         let lines = read_file(connection_file_path).unwrap();
-        let graph = make_graph(lines, drones.clone());
-        Self {
+        let graph = make_graph(lines, drones.lock().unwrap().clone());
+        let sim = Self {
             graph,
-            drones
+            drones,
+            finished: Arc::new(Mutex::new(false))
+        };
+        sim.start_reader_thread();
+
+        sim
+    }
+
+    pub fn do_step(&self, x:f32, y:f32) {
+        let standard_port = 8080;
+        let url = "127.0.0.1:";
+        let message = "MOVE";
+        
+        let socket = UdpSocket::bind("127.0.0.1:7879").expect("Could not bind socket");
+        for drone in &*self.drones.lock().unwrap() {
+            let port = standard_port +  drone.id;
+            socket.send_to(format!("{} {} {}", message, x, y).as_bytes(), format!("{}{}", url, port))
+            .unwrap();
         }
+    }
+
+    fn start_reader_thread(&self) {
+        let drones_clone = self.drones.clone();
+        let finished_clone = self.finished.clone();
+
+        thread::spawn(move || {
+            let socket = UdpSocket::bind("127.0.0.1:7878").expect("Could not bind socket");
+            loop {
+                let mut buffer = [0u8; 1024];
+                if let Ok((size, _)) = socket.recv_from(&mut buffer) {
+                    let message = std::str::from_utf8(&buffer[..size]).unwrap();
+                    if let Ok(parsed) = message.parse::<bool>() {
+                        if parsed {
+                            println!("Target reached");
+                            *finished_clone.lock().unwrap() = true;
+                            break;
+                        }
+                    }
+                    let data = Some(serde_json::from_str::<DroneData>(message).unwrap());
+                    
+                    if let Some(data) = data {
+                        let dron_data: DroneData = data;
+                        let mut drones = drones_clone.lock().unwrap();
+                        for drone in &mut *drones {
+                            if drone.id == dron_data.id {
+                                drone.x_coordinates = dron_data.x;
+                                drone.y_coordinates = dron_data.y;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    pub fn get_drones(&self) -> Vec<Drone>{
+        self.drones.lock().unwrap().clone()
+    }
+
+    pub fn update_drones(&self) {
+        let standard_port = 8080;
+        let socket = UdpSocket::bind("127.0.0.1:7879").expect("Could not bind socket");
+
+        for drone in &*self.drones.lock().unwrap() {
+            let port = standard_port +  drone.id;
+            socket.send_to("POSITION".as_bytes(), format!("127.0.0.1:{}", port))
+            .unwrap();
+        }
+    }
+
+    pub fn is_finished(&self) -> bool{
+        *self.finished.lock().unwrap()
     }
 }
 
 fn read_file(path: &str) -> Option<Vec<String>> {
-
      // Open the file
      let file = File::open(path);
 
@@ -80,9 +164,9 @@ fn read_file(path: &str) -> Option<Vec<String>> {
     Some(lines)
 }
 
-fn make_drones(lines: Vec<String>) -> Vec<Drone> {
+fn make_drones(lines: Vec<String>) -> Arc<Mutex<Vec<Drone>>> {
 
-    let mut drones: Vec<Drone> = Vec::new();
+    let drones: Arc<Mutex<Vec<Drone>>> = Arc::new(Mutex::new(Vec::new()));
 
     let num_of_drones = lines.len() - 1;
     for i in 1..= num_of_drones {
@@ -93,8 +177,8 @@ fn make_drones(lines: Vec<String>) -> Vec<Drone> {
             .collect();
 
         let id = data[0];
-        let x_coordinates = data[1];
-        let y_coordinates = data[2];
+        let x_coordinates = data[1] as f32;
+        let y_coordinates = data[2] as f32;
 
         let drone = Drone::new(
            id,
@@ -102,7 +186,7 @@ fn make_drones(lines: Vec<String>) -> Vec<Drone> {
            y_coordinates
         );
         
-         drones.push(drone);
+        drones.lock().unwrap().push(drone);
     }
 
     drones
@@ -131,7 +215,8 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 }
 
 pub fn run_drones(sim: &Simulator) {
-    for drone in &sim.drones {
+    let drones = sim.drones.lock().unwrap();
+    for drone in &*drones {
         run_drone_in_docker_unix(drone.id, drone.x_coordinates, drone.y_coordinates).expect("Failed to run drone");
     }
     make_edges(sim);
@@ -156,7 +241,7 @@ fn run_drone_in_docker_windows() {
     println!("her skal det kjøres i windows");
 }
 
-fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
+fn run_drone_in_docker_unix(id:usize, x: f32, y:f32) -> io::Result<()> {
     // Path to your Rust project
 
    
@@ -188,7 +273,7 @@ fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
 fn make_edges(sim: &Simulator) {
     let standard_port = 8080;
     let url = "127.0.0.1:";
-    let socket = UdpSocket::bind("127.0.0.1:7878").expect("Could not bind socket");
+    let socket = UdpSocket::bind("127.0.0.1:7879").expect("Could not bind socket");
     let message = "ADD_NEIGHBOR";
     for (drone, _) in (0..sim.graph.drones.len()).enumerate() {
         for (edge, _) in (0..sim.graph.drones[drone].len()).enumerate() {

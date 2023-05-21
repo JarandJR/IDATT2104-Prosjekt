@@ -2,9 +2,10 @@ mod simulator;
 
 use simulator::Simulator;
 use simulator::run_drones;
+use simulator::Coordinate;
 
 use actix_cors::Cors;
-use actix_web::{get, post, web, App, HttpServer, HttpResponse, Responder};
+use actix_web::{get, post, put, web, App, HttpServer, HttpResponse, Responder};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -30,9 +31,13 @@ async fn test_connection(sim: web::Data<Simulator>)  -> impl Responder {
     HttpResponse::Ok().json(format!("Connected, {:?}", sim.drones))
 }
 
-#[get("/do_step")]
-async fn do_step(sim: web::Data<Simulator>) -> impl Responder {
+#[post("/do_step")]
+async fn do_step(sim: web::Data<Simulator>, coor: web::Json<Coordinate>) -> impl Responder {
     println!("doing step");
+    let x = coor.x;
+    let y = coor.y;
+
+    sim.do_step(x, y);
     HttpResponse::Ok().json(format!("Test of appstate: 3 = , {:?}", sim.drones))
 }
 
@@ -51,12 +56,18 @@ async fn get_drones(sim: web::Data<Simulator>) -> impl Responder {
     drone2.push(10);
     drone2.push(500);
     drones.push(drone2);
-    HttpResponse::Ok().json(drones)
+    HttpResponse::Ok().json(sim.get_drones())
 }
 
 #[get("/is_finished")]
 async fn is_finished(sim: web::Data<Simulator>) -> impl Responder {
     println!("IS FINISHED?");
-    HttpResponse::Ok().json(String::from("Test is finished"))
+    HttpResponse::Ok().json(sim.is_finished())
+}
+
+#[put("/update")]
+async fn update_drones(sim: web::Data<Simulator>) -> impl Responder {
+    sim.update_drones();
+    HttpResponse::Ok()
 }
 

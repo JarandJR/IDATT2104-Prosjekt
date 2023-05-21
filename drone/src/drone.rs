@@ -171,7 +171,7 @@ impl Drone {
     }
 
     fn send_finished_to_simulator(&self) {
-        let message = "goHome: true";
+        let message = "true";
         self.socket
             .send_to(message.as_bytes(), self.simulator_address)
             .unwrap();
@@ -370,7 +370,7 @@ impl Drone {
 
         if self.go_home {
             self.send_finished_to_simulator();
-            self.send_messages(self.id, String::from("TEST"));
+            self.send_messages(self.id, String::from("message"));
         }
     }
 }
