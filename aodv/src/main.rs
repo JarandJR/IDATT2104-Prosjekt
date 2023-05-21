@@ -1,6 +1,6 @@
 mod simulator;
 
-use std::{fs::File, io::{Read, BufReader, BufRead, self}, env};
+use std::{fs::File, io::{Read, BufReader, BufRead, self}, env, process::Command};
 
 use simulator::Simulator;
 
@@ -9,6 +9,8 @@ use actix_web::{get, post, web, App, HttpServer, HttpResponse, Responder};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    run_drone_in_docker();
+
     let sim = Simulator::new(3);
 
     let drones_file_path = "droner.txt";
@@ -166,7 +168,7 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> io::Result<Graph> {
     let first_line: Vec<&str> = lines[0].split_whitespace().collect();
     let nodes: usize = first_line[0].parse().expect("File not formated correctly");
     let edges: usize = first_line[1].parse().expect("File not formated correctly");
-    println!("{} - {}", lines.len(), edges + 1);
+    //println!("{} - {}", lines.len(), edges + 1);
     assert!(lines.len() == edges + 1);
 
     let mut graph = Graph::with_nodes(nodes);
@@ -181,7 +183,39 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> io::Result<Graph> {
         graph.drones[data[0]].push(drone);
     }
 
-    println!("{:?}", graph.drones);
+    //println!("{:?}", graph.drones);
 
     Ok(graph)
 }
+
+fn run_drone_in_docker() -> io::Result<()> {
+    // Path to your Rust project
+    let project_path = "/home/vetle/fjerdesemester/Fullstack/IDATT2104-Prosjekt/drone";
+
+    // Docker command to run `cargo run` in the container
+    let docker_command = format!(
+        "docker run -v {}:/usr/src/myapp -w /usr/src/myapp -it rust:latest cargo run",
+        project_path
+    );
+
+    // Escape the double quotes in the Docker command
+    let escaped_docker_command = docker_command.replace("\"", "\\\"");
+
+    // Use powershell to open a new terminal window and run the Docker command
+    let output = Command::new("powershell.exe")
+        .arg("start")
+        .arg("wsl")
+        .arg("\"")
+        .arg(&escaped_docker_command)
+        .arg("\"")
+        .spawn()?;
+
+    Ok(())
+}
+
+
+
+
+
+
+
