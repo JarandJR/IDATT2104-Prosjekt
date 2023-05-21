@@ -1,4 +1,5 @@
 use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display, Path}};
+use dirs;
 
 #[derive(Debug,Clone)]
 struct Graph {
@@ -161,10 +162,13 @@ fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<(
     let project_path = get_path_to_drone();
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
-    // Docker command to run `cargo run` in the container
-    let docker_command = format!(
-        "docker run -v {}:/usr/src/myapp  -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
+    let cargo_registry_path = get_cargo_registry_path().unwrap();
+
+     // Docker command to run `cargo run` in the container
+     let docker_command = format!(
+        "docker run -v {}:/usr/src/myapp -v {}:/usr/local/cargo/registry -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
         trimmed_path,
+        cargo_registry_path,
         id,
         x,
         y
@@ -182,7 +186,15 @@ fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<(
     Ok(())
 }
 
-
+fn get_cargo_registry_path() -> Option<String> {
+    match dirs::home_dir() {
+        Some(mut path) => {
+            path.push(".cargo/registry");
+            Some(path.to_str()?.to_string())
+        },
+        None => None,
+    }
+}
 
 fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
     // Path to your Rust project
