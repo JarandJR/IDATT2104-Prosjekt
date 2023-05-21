@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display}, thread, sync::{Mutex, Arc}};
+use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf}, thread, sync::{Mutex, Arc}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -197,7 +197,9 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
     let first_line: Vec<&str> = lines[0].split_whitespace().collect();
     let nodes: usize = first_line[0].parse().expect("File not formated correctly");
     let edges: usize = first_line[1].parse().expect("File not formated correctly");
-    //println!("{} - {}", lines.len(), edges + 1);
+    println!("{} - {}", lines.len(), edges + 1);
+    println!("{:?}", lines);
+
     assert!(lines.len() == edges + 1);
 
     let mut graph = Graph::with_nodes(nodes);
@@ -237,13 +239,36 @@ fn get_path_to_drone() -> String {
     path
 }
 
-fn run_drone_in_docker_windows() {
-    println!("her skal det kjøres i windows");
+fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<()> {
+    // Windows path to your Rust project
+    // Make sure to replace it with your actual project path
+    
+    let project_path = get_path_to_drone();
+    let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
+
+    // Docker command to run `cargo run` in the container
+    let docker_command = format!(
+        "docker run -v {}:/usr/src/myapp  -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
+        trimmed_path,
+        id,
+        x,
+        y
+    );
+
+    // Run the Docker command in a new cmd window
+    let output = Command::new("cmd.exe")
+        .arg("/C")
+        .arg("start")
+        .arg("cmd.exe")
+        .arg("/C")
+        .arg(&docker_command)
+        .spawn()?;
+
+    Ok(())
 }
 
 fn run_drone_in_docker_unix(id:usize, x: f32, y:f32) -> io::Result<()> {
     // Path to your Rust project
-
    
     let project_path = get_path_to_drone();
 
