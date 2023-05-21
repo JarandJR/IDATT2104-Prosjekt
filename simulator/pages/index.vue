@@ -10,7 +10,7 @@
   import axios from 'axios';
 
   const connection = ref("not connected");
-  const url = 'http://127.0.0.1:8080/';
+  const url = 'http://127.0.0.1:8079/';
 
   onMounted(async () => {
     const response = await axios.get(url + "test_connection");
@@ -33,6 +33,11 @@ html, body {
     background-image: url('@/public/background.jfif');
     background-size: cover;
     background-position: center;
+}
+
+p {
+    color:white;
+    min-width: 500px;
 }
 
 </style>
