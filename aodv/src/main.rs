@@ -60,8 +60,3 @@ async fn is_finished(sim: web::Data<Simulator>) -> impl Responder {
     HttpResponse::Ok().json(String::from("Test is finished"))
 }
 
-
-
-
-
-
