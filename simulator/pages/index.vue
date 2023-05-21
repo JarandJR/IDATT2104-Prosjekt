@@ -1,7 +1,6 @@
 <template>
     <div class="wrapper">
         <p>Check backend: {{ connection }}</p>
-        <p>{{ data }} </p>
         <Simulator/>
     </div>
   </template>
@@ -12,26 +11,28 @@
 
   const connection = ref("not connected");
   const url = 'http://127.0.0.1:8080/';
-  const data = ref("Error");
 
   onMounted(async () => {
     const response = await axios.get(url + "test_connection");
 
     if (response.status = 200)
         connection.value = response.data;
-
-    const response2 = await axios.get(url + "do_step");
-
-    if (response2.status = 200)
-        data.value = response2.data;
   });
   </script>
 
-<style scoped>
+<style>
 
+html, body {
+    margin: 0;
+    padding: 0;
+}
 .wrapper {
     display: flex;
-    
+    width: 100%;
+    height: 100%;
+    background-image: url('@/public/background.jfif');
+    background-size: cover;
+    background-position: center;
 }
 
 </style>

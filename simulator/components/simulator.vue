@@ -1,114 +1,144 @@
 <template>
   <div class="container">
-    <h3 @click="restartSimulation">Rescue simulation with drones</h3>
+    <h3 @click="startSimulation">Rescue simulation with drones</h3>
     <canvas id="canvas" />
   </div>
 </template>
 
 <script setup lang="js">
-// Define the initial state of the simulation
-let drones = [
-  { x: 50, y: 50, speed: 2, rescued: false },
-  { x: 100, y: 100, speed: 1.5, rescued: false },
-  // Add more drones as needed
+import axios from 'axios';
+
+const url = 'http://127.0.0.1:8080/';
+const droneColor = 'blue';
+
+let testDrones = [
+  { x: 50, y: 50, speed: 5, rescued: false },
+  { x: 104, y: 100, speed: 10, rescued: false },
+  { x: 58 + 60, y: 150, speed: 5, rescued: false },
+  { x: 100 + 100, y: 200, speed: 8, rescued: false },
+  { x: 50 + 72, y: 300, speed: 5, rescued: false },
+  { x: 100 + 123, y: 400, speed: 7, rescued: false },
+  { x: 50 + 117, y: 100, speed: 5, rescued: false },
+  { x: 100 + 521, y: 150, speed: 6, rescued: false },
 ];
 
-// Define the position of the target to be rescued
-const target = { x: 200, y: 200 };
-
-// Create a ref for the canvas element and the canvas context
+const target = ref({ x: 1350, y: 325 });
+const drones = ref([]);
 const canvasRef = ref(null);
 const ctxRef = ref(null);
 
-// Define a function to update the simulation state
-function updateSimulation() {
-  // Perform one step of the simulation
-  drones.forEach(drone => {
+async function updateSimulation() {
+  /*const response = await axios.get(url + 'do_step');
+  if (response.status = 200) {
+    drones.value = (await axios.get(url + 'get_drones')).data
+    console.log(drones.value)
+  }*/
+  testDrones.forEach(drone => {
     if (!drone.rescued) {
       // Move the drone towards the target
-      if (drone.x < target.x) {
-        drone.x += drone.speed;
-      } else if (drone.x > target.x) {
-        drone.x -= drone.speed;
+      if (target.value.x - drone.x > target.value.y - drone.y) {
+        if (drone.x < target.value.x) {
+          drone.x += drone.speed;
+        }
+        if (drone.x > target.value.x) {
+          drone.x -= drone.speed;
+        }
       }
 
-      if (drone.y < target.y) {
-        drone.y += drone.speed;
-      } else if (drone.y > target.y) {
-        drone.y -= drone.speed;
+      else {
+        if (drone.y < target.value.y) {
+          drone.y += drone.speed;
+        }
+        if (drone.y > target.value.y) {
+          drone.y -= drone.speed;
+        }
       }
 
       // Check if the drone has reached the target
-      if (drone.x === target.x && drone.y === target.y) {
+      if (drone.x === target.value.x && drone.y === target.value.y) {
         drone.rescued = true;
       }
     }
   });
+  /*const is_finished = await (axios.get(url + 'is_finished')).data;
+      if (is_finished) {
+        console.log("finished")
+        return
+      }*/
 }
 
-// Define a function to draw the current state of the simulation on the canvas
 function drawSimulation() {
-  // Clear the canvas
-  ctxRef.value.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+  clearCanvas()
+  drawTarget()
+  drawDrones()
+}
 
-  // Draw the target
-  ctxRef.value.beginPath();
-  ctxRef.value.arc(target.x, target.y, 10, 0, Math.PI * 2);
-  ctxRef.value.fillStyle = 'red';
-  ctxRef.value.fill();
-  ctxRef.value.closePath();
-
-  // Draw the drones
-  drones.forEach(drone => {
-    ctxRef.value.beginPath();
-    ctxRef.value.arc(drone.x, drone.y, 10, 0, Math.PI * 2);
-    ctxRef.value.fillStyle = drone.rescued ? 'green' : 'blue';
-    ctxRef.value.fill();
-    ctxRef.value.closePath();
+function drawDrones(x, y) {
+  testDrones.forEach(drone => {
+    drawCircle(drone.x, drone.y, 10, 'blue'); 
   });
 }
 
-// Define a function to animate the simulation
-function animateSimulation() {
-  // Update the simulation state
-  updateSimulation();
+function drawCircle(x, y, size, color) {
+  ctxRef.value.beginPath();
+  ctxRef.value.fillStyle = 'black';
+  ctxRef.value.arc(x, y, size + 2, 0, Math.PI * 2);
+  ctxRef.value.fill();
+  ctxRef.value.closePath();
 
-  // Draw the simulation
+  ctxRef.value.beginPath();
+  ctxRef.value.fillStyle = color;
+  ctxRef.value.arc(x, y, size, 0, Math.PI * 2);
+  ctxRef.value.fill();
+  ctxRef.value.closePath();
+}
+
+function drawTarget() {
+  drawCircle(target.value.x, target.value.y, 10, 'red');
+}
+
+function clearCanvas() {
+  ctxRef.value.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+}
+
+function animateSimulation() {
+  updateSimulation();
   drawSimulation();
 
-  // Check if the simulation is complete
   if (!isSimulationComplete()) {
-    // If not complete, schedule the next animation frame
     requestAnimationFrame(animateSimulation);
   }
 }
 
-// Define a function to check if the simulation is complete
 function isSimulationComplete() {
-  // Check if all drones have been rescued
-  return drones.every(drone => drone.rescued);
+  return testDrones.every(drone => drone.rescued);
 }
 
-// Define a function to restart the simulation
-function restartSimulation() {
-  // Reset the drone positions and rescued states
-  drones.forEach(drone => {
-    drone.x = 50;
-    drone.y = 50;
-    drone.rescued = false;
-  });
-
-  // Start the simulation
+function startSimulation() {
   animateSimulation();
 }
 
 onMounted(() => {
-  // Access the canvas element and its context after it has been mounted
   canvasRef.value = document.getElementById("canvas");
   const ctx = canvas.getContext('2d');
-  
-  // Assign the canvas context to the ref
   ctxRef.value = ctx;
+
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const backingStoreRatio =
+    ctx.webkitBackingStorePixelRatio ||
+    ctx.mozBackingStorePixelRatio ||
+    ctx.msBackingStorePixelRatio ||
+    ctx.oBackingStorePixelRatio ||
+    ctx.backingStorePixelRatio ||
+    1;
+  const ratio = devicePixelRatio / backingStoreRatio;
+
+  canvas.width = canvas.clientWidth * ratio;
+  canvas.height = canvas.clientHeight * ratio;
+  ctx.scale(ratio, ratio);
+
+  drawTarget()
+  drawDrones()
 });
 
 </script>
