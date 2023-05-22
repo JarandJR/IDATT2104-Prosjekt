@@ -217,12 +217,12 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 }
 
 pub fn run_drones(sim: &Simulator) {
-    for drone in &*sim.drones.lock().unwrap() {
-        run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
-    }
-    println!("Waiting for drones to start");
-    thread::sleep(std::time::Duration::from_secs(60));
-    println!("Adding edges");
+    // for drone in &*sim.drones.lock().unwrap() {
+        run_drone_in_docker_windows(1 as usize, 1 as f32, 1 as f32);
+    // }
+    // println!("Waiting for drones to start");
+    // thread::sleep(std::time::Duration::from_secs(60));
+    // println!("Adding edges");
     make_edges(sim);
 }
 
