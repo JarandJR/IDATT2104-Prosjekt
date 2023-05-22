@@ -197,8 +197,8 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
     let first_line: Vec<&str> = lines[0].split_whitespace().collect();
     let nodes: usize = first_line[0].parse().expect("File not formated correctly");
     let edges: usize = first_line[1].parse().expect("File not formated correctly");
-    println!("{} - {}", lines.len(), edges + 1);
-    println!("{:?}", lines);
+    //println!("{} - {}", lines.len(), edges + 1);
+    //println!("{:?}", lines);
 
     assert!(lines.len() == edges + 1);
 
@@ -217,17 +217,16 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 }
 
 pub fn run_drones(sim: &Simulator) {
-    let drones = sim.drones.lock().unwrap();
-    for drone in &*drones {
-        run_drone_in_docker_unix(drone.id, drone.x_coordinates, drone.y_coordinates).expect("Failed to run drone");
-    }
-    make_edges(sim);
-
-    // let output = if cfg!(target_os = "windows") {
-    //     run_drone_in_docker_windows();
-    // } else {
-    //     run_drone_in_docker_unix(1, 1, 1);
-    // };
+    
+    let output = if cfg!(target_os = "windows") {
+        for drone in &sim.drones {
+            //println!("{:?}",drone);
+            run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
+        }
+    } else {
+        run_drone_in_docker_unix(1, 1, 1);
+    };
+    // make_edges(sim);
 }
 
 fn get_path_to_drone() -> String {
@@ -246,10 +245,16 @@ fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<(
     let project_path = get_path_to_drone();
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
-    // Docker command to run `cargo run` in the container
-    let docker_command = format!(
-        "docker run -v {}:/usr/src/myapp  -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
+    let cargo_registry_path = get_cargo_registry_path().unwrap();
+    let port = 8080 + id;
+
+     // Docker command to run `cargo run` in the container
+     let docker_command = format!(
+        "docker run -v {}:/usr/src/myapp -v {}:/usr/local/cargo/registry -p {}:{}/udp -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
         trimmed_path,
+        cargo_registry_path,
+        port,
+        port,
         id,
         x,
         y
@@ -267,7 +272,17 @@ fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<(
     Ok(())
 }
 
-fn run_drone_in_docker_unix(id:usize, x: f32, y:f32) -> io::Result<()> {
+fn get_cargo_registry_path() -> Option<String> {
+    match dirs::home_dir() {
+        Some(mut path) => {
+            path.push(".cargo/registry");
+            Some(path.to_str()?.to_string())
+        },
+        None => None,
+    }
+}
+
+fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
     // Path to your Rust project
    
     let project_path = get_path_to_drone();
