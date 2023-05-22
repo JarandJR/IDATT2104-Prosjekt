@@ -47,7 +47,7 @@ impl Drone {
         go_home: bool,
     ) -> io::Result<Drone> {
         let port = STANDARD_PORT + id as u32;
-        let socket = UdpSocket::bind(format!("127.0.0.1:{}", port))?;
+        let socket = UdpSocket::bind(format!("0.0.0.0:{}", port))?;
         Ok(Drone {
             id,
             position,

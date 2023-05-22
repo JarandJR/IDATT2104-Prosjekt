@@ -217,16 +217,13 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 }
 
 pub fn run_drones(sim: &Simulator) {
-    
-    let output = if cfg!(target_os = "windows") {
-        for drone in &sim.drones {
-            //println!("{:?}",drone);
-            run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
-        }
-    } else {
-        run_drone_in_docker_unix(1, 1, 1);
-    };
-    // make_edges(sim);
+    for drone in &*sim.drones.lock().unwrap() {
+        run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
+    }
+    println!("Waiting for drones to start");
+    thread::sleep(std::time::Duration::from_secs(60));
+    println!("Adding edges");
+    make_edges(sim);
 }
 
 fn get_path_to_drone() -> String {
@@ -238,10 +235,7 @@ fn get_path_to_drone() -> String {
     path
 }
 
-fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<()> {
-    // Windows path to your Rust project
-    // Make sure to replace it with your actual project path
-    
+fn run_drone_in_docker_windows(id:usize, x: f32, y:f32) -> std::io::Result<()> {    
     let project_path = get_path_to_drone();
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
@@ -282,38 +276,10 @@ fn get_cargo_registry_path() -> Option<String> {
     }
 }
 
-fn run_drone_in_docker_unix(id:usize, x: usize, y:usize) -> io::Result<()> {
-    // Path to your Rust project
-   
-    let project_path = get_path_to_drone();
-
-    // Docker command to run `cargo run` in the container
-    let docker_command = format!(
-        "docker run -v {}:/usr/src/myapp -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
-        project_path,
-        id,
-        x,
-        y
-    );
-
-    // Escape the double quotes in the Docker command
-    let escaped_docker_command = docker_command.replace("\"", "\\\"");
-
-    // Use powershell to open a new terminal window and run the Docker command
-    let output = Command::new("powershell.exe")
-        .arg("start")
-        .arg("wsl")
-        .arg("\"")
-        .arg(&escaped_docker_command)
-        .arg("\"")
-        .spawn()?;
-    Ok(())
-}
-
 fn make_edges(sim: &Simulator) {
     let standard_port = 8080;
     let url = "127.0.0.1:";
-    let socket = UdpSocket::bind("127.0.0.1:7879").expect("Could not bind socket");
+    let socket = UdpSocket::bind("127.0.0.1:7877").expect("Could not bind socket");
     let message = "ADD_NEIGHBOR";
     for (drone, _) in (0..sim.graph.drones.len()).enumerate() {
         for (edge, _) in (0..sim.graph.drones[drone].len()).enumerate() {
