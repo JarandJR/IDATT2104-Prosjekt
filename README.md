@@ -52,6 +52,8 @@ Den fremtidige løsningen ville også brukt AODV for å ha et dynamisk og flyttb
 En ideell applikasjon er mer brukervennlig. Så i en senere versjon ville det vært ønskelig om applikasjonen ble mer tilpasset dette slik at det blir enklere for brukere av applikasjonen å starte den opp.
 En fremtidig funksjonalitet som gjenre skulle blitt utviklet hadde vært å gjøre mesh-networket til et slags mobilt nettverk som evt. Brukere på bakken kan bruke til å kommunisere via dronene med hverandre. På den måten kan man opprettholde et dynamisk og mobilt nettverk for de som deltar under leteaksjonen.
 
+Det skal også nevnes at det er gjort et forsøk med å kjøre dorne programmet i en docker conteiner. Det kom til et punkt der vi klarte å kjøre hver drone i en docker og fikk sendt meldinger fra simuerings programmet til dronene men ikke fra dronene til simuleringsprogrammet eller hverandre. Vanskelighetene her kommer med at hver docker har sine egne nettveks instillinger. Dette forsøket kan ses på branchen docker-test, det skal nevens at dette ikke kjører optimalt og er mange bugs. 
+
 ## Eksterne avhengigheter
 
 ### Frontend
