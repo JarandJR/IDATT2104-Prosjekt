@@ -11,8 +11,8 @@ fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     
     // Check if the required number of arguments is provided
-    if args.len() < 4 {
-        eprintln!("Usage: program_name id x y speed");
+    if args.len() != 4 {
+        eprintln!("Usage: program_name id x y");
         std::process::exit(1);
     }
     
