@@ -218,7 +218,7 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 
 pub fn run_drones(sim: &Simulator) {
     for drone in &*sim.drones.lock().unwrap() {
-        run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
+        run_drone_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
     }
     println!("Waiting for drones to start");
     thread::sleep(std::time::Duration::from_secs(60));
@@ -235,46 +235,35 @@ fn get_path_to_drone() -> String {
     path
 }
 
-fn run_drone_in_docker_windows(id:usize, x: f32, y:f32) -> std::io::Result<()> {    
+fn run_drone_windows(id: usize, x: f32, y: f32) -> std::io::Result<()> {
     let project_path = get_path_to_drone();
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
-    let cargo_registry_path = get_cargo_registry_path().unwrap();
-    let port = 8080 + id;
+    // Command to run your application
+    let command = format!("cargo run -- {} {} {}", id, x, y);
 
-     // Docker command to run `cargo run` in the container
-     let docker_command = format!(
-        "docker run -v {}:/usr/src/myapp -v {}:/usr/local/cargo/registry -p {}:{}/udp -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
-        trimmed_path,
-        cargo_registry_path,
-        port,
-        port,
-        id,
-        x,
-        y
-    );
-
-    // Run the Docker command in a new cmd window
+    // Run the command in a new cmd window
     let output = Command::new("cmd.exe")
         .arg("/C")
         .arg("start")
         .arg("cmd.exe")
-        .arg("/C")
-        .arg(&docker_command)
+        .arg("/K")
+        .arg(&command)
+        .current_dir(trimmed_path) // Set the working directory to your project's directory
         .spawn()?;
 
     Ok(())
 }
 
-fn get_cargo_registry_path() -> Option<String> {
-    match dirs::home_dir() {
-        Some(mut path) => {
-            path.push(".cargo/registry");
-            Some(path.to_str()?.to_string())
-        },
-        None => None,
-    }
-}
+// fn get_cargo_registry_path() -> Option<String> {
+//     match dirs::home_dir() {
+//         Some(mut path) => {
+//             path.push(".cargo/registry");
+//             Some(path.to_str()?.to_string())
+//         },
+//         None => None,
+//     }
+// }
 
 fn make_edges(sim: &Simulator) {
     let standard_port = 8080;
