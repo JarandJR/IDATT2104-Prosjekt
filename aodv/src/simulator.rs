@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display, Path}};
+use std::{fs::File, io::{BufReader, BufRead, self}, process::Command, net::UdpSocket, env, path::{PathBuf, Display, Path}, fmt::format};
 use dirs;
 
 #[derive(Debug,Clone)]
@@ -114,8 +114,8 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
     let first_line: Vec<&str> = lines[0].split_whitespace().collect();
     let nodes: usize = first_line[0].parse().expect("File not formated correctly");
     let edges: usize = first_line[1].parse().expect("File not formated correctly");
-    println!("{} - {}", lines.len(), edges + 1);
-    println!("{:?}", lines);
+    //println!("{} - {}", lines.len(), edges + 1);
+    //println!("{:?}", lines);
 
     assert!(lines.len() == edges + 1);
 
@@ -136,10 +136,10 @@ fn make_graph(lines: Vec<String>, drones: Vec<Drone>) -> Graph {
 pub fn run_drones(sim: &Simulator) {
     
     let output = if cfg!(target_os = "windows") {
-        for drone in &sim.drones {
+        //for drone in &sim.drones {
             //println!("{:?}",drone);
-            run_drone_in_docker_windows(drone.id, drone.x_coordinates, drone.y_coordinates);
-        }
+            run_drone_in_docker_windows(1, 20, 20);
+        //}
     } else {
         run_drone_in_docker_unix(1, 1, 1);
     };
@@ -163,12 +163,15 @@ fn run_drone_in_docker_windows(id:usize, x: usize, y:usize) -> std::io::Result<(
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
     let cargo_registry_path = get_cargo_registry_path().unwrap();
+    let port = 8080 + id;
 
      // Docker command to run `cargo run` in the container
      let docker_command = format!(
-        "docker run -v {}:/usr/src/myapp -v {}:/usr/local/cargo/registry -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
+        "docker run -v {}:/usr/src/myapp -v {}:/usr/local/cargo/registry -p {}:{}/udp -w /usr/src/myapp -it rust:latest cargo run -- {} {} {}",
         trimmed_path,
         cargo_registry_path,
+        port,
+        port,
         id,
         x,
         y
