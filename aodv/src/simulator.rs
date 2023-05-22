@@ -223,7 +223,7 @@ fn run_drones(sim: &Simulator) {
         run_drone_windows(drone.id, drone.x, drone.y);
     }
     println!("Waiting for drones to start");
-    thread::sleep(std::time::Duration::from_secs(30));
+    thread::sleep(std::time::Duration::from_secs(10));
     println!("Adding edges");
     make_edges(sim);
 }
@@ -243,7 +243,7 @@ fn run_drone_windows(id: usize, x: f32, y: f32) -> std::io::Result<()> {
     let trimmed_path = project_path.trim_start_matches(&['\\', '?'][..]);
 
     // Command to run your application
-    let command = format!("cargo run -- {} {} {}", id, x, y);
+    let command = format!("cargo run {} {} {}", id, x, y);
 
     // Run the command in a new cmd window
     let output = Command::new("cmd.exe")
