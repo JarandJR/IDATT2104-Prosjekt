@@ -3,7 +3,7 @@ use std::io::{self};
 use std::net::{SocketAddr, UdpSocket};
 
 const STANDARD_PORT: u32 = 8080;
-const COMMUNICATION_RADIUS: f32 = 100.0;
+const COMMUNICATION_RADIUS: f32 = 150.0;
 const DRONE_SPEED:f32 = 5.0;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -79,20 +79,13 @@ impl Drone {
             step_y = 0.0;
         }
 
-        let furthes_neighbor = self.find_furthest_neighbor();
-        if let Some(neighbor) = furthes_neighbor {
-            println!(
-                "Distance between drones: {}",
-                self.calculate_distance(
-                    step_x + self.position.x,
-                    step_y + self.position.y,
-                    neighbor.position.clone()
-                )
-            );
+        let furthes_neighbor_from_target = self.find_furthest_neighbor_from_target(target);
+        if let Some(neighbor) = furthes_neighbor_from_target {
             if self.calculate_distance(
                 step_x + self.position.x,
                 step_y + self.position.y,
-                neighbor.position.clone(),
+                neighbor.position.x,
+                neighbor.position.y
             ) > COMMUNICATION_RADIUS
             {
                 self.send_move_request(&neighbor, target);
@@ -116,43 +109,37 @@ impl Drone {
         println!("Current position: {:?}", self.position);
     }
 
-    fn calculate_distance(&self, x: f32, y: f32, target: Coordinate) -> f32 {
-        let dx = target.x - x;
-        let dy = target.y - y;
+    fn calculate_distance(&self, x: f32, y: f32, x_2: f32, y_2: f32) -> f32 {
+        let dx = x - x_2;
+        let dy = y - y_2;
         (dx * dx + dy * dy).sqrt()
     }
 
     fn update_neighbors(&self) {
         for neighbor in &self.routing_table.neighbors {
-            let message = format!("UPDATE {} {} {}", self.id, self.position.x, self.position.y);
-            let port = STANDARD_PORT + neighbor.id as u32;
-            let neighbor_address: SocketAddr = format!("127.0.0.1:{}", port).parse().unwrap();
-            
-            self.socket
-                .send_to(message.as_bytes(), neighbor_address)
-                .unwrap();
+            let message = format!("{} {}", self.position.x, self.position.y);
+            self.send_message(&message, neighbor.id, "UPDATE");     
         }
+        println!("Neighbors updated");
     }
 
     fn update_neighbor(&mut self, message: &str) {
         let message_parts: Vec<&str> = message.trim().split_whitespace().collect();
 
         println!("updating neighbor");
-        if message_parts.len() == 4 {
-            if let (Ok(requester_id), Ok(requester_x), Ok(requester_y)) = (
-                message_parts[1].parse::<usize>(),
-                message_parts[2].parse::<f32>(),
-                message_parts[3].parse::<f32>(),
-            ) {
-                for neighbor in &mut self.routing_table.neighbors {
-                    if neighbor.id == requester_id {
-                        neighbor.position.x = requester_x;
-                        neighbor.position.y = requester_y;
-                        println!("neighbor updated {}", neighbor.id);
-                    }
+        if let (Ok(requester_id), Ok(requester_x), Ok(requester_y)) = (
+            message_parts[1].parse::<usize>(),
+            message_parts[2].parse::<f32>(),
+            message_parts[3].parse::<f32>(),
+        ) {
+            for neighbor in &mut self.routing_table.neighbors {
+                if neighbor.id == requester_id {
+                    neighbor.position.x = requester_x;
+                    neighbor.position.y = requester_y;
                 }
             }
         }
+        println!("Finished updating")
     }
 
     fn send_position_to_simulator(&self) {
@@ -197,14 +184,10 @@ impl Drone {
         );
     }
 
-    fn find_furthest_neighbor(&self) -> Option<&Neighbor> {
+    fn find_furthest_neighbor_from_target(&self, target: &Coordinate) -> Option<&Neighbor> {
         self.routing_table.neighbors.iter().max_by(|n1, n2| {
-            let distance1 = ((n1.position.x - self.position.x).powi(2)
-                + (n1.position.y - self.position.y).powi(2))
-            .sqrt();
-            let distance2 = ((n2.position.x - self.position.x).powi(2)
-                + (n2.position.y - self.position.y).powi(2))
-            .sqrt();
+            let distance1 = self.calculate_distance(n1.position.x, n1.position.y, target.x, target.y);
+            let distance2 = self.calculate_distance(n2.position.x, n2.position.y, target.x, target.y);
             distance1.partial_cmp(&distance2).unwrap()
         })
     }
@@ -252,11 +235,6 @@ impl Drone {
     }
 
     fn receive_target_from_simulator(&self, message: &str) -> Option<Coordinate> {
-        if message == "stop" {
-            println!("Stopped loop");
-            return None;
-        }
-
         let message_parts: Vec<&str> = message.trim().split_whitespace().collect();
         if let (Ok(neighbor_x), Ok(neighbor_y)) = (
             message_parts[1].parse::<f32>(),
@@ -346,6 +324,7 @@ impl Drone {
             if let Ok((size, _)) = self.socket.recv_from(&mut buffer) {
                 let message = std::str::from_utf8(&buffer[..size]).unwrap();
                 let message_parts: Vec<&str> = message.trim().split_whitespace().collect();
+                println!("########### {} #################", message_parts[0]);
                 if message_parts[0] == "MOVE_REQUEST" {
                     self.receive_move_request(message);
                 } else if message_parts[0] == "ADD_NEIGHBOR" {

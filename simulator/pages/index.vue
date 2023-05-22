@@ -37,7 +37,6 @@ html, body {
 
 p {
     color:white;
-    min-width: 500px;
 }
 
 </style>

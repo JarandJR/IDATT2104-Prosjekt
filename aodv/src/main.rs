@@ -1,7 +1,6 @@
 mod simulator;
 
 use simulator::Simulator;
-use simulator::run_drones;
 use simulator::Coordinate;
 
 use actix_cors::Cors;
@@ -10,8 +9,8 @@ use actix_web::{get, post, put, web, App, HttpServer, HttpResponse, Responder};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let sim = Simulator::new();
-    run_drones(&sim);
-
+    println!("started");
+    
     HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
@@ -27,8 +26,8 @@ async fn main() -> std::io::Result<()> {
 }
 
 #[get("/test_connection")]
-async fn test_connection(sim: web::Data<Simulator>)  -> impl Responder {
-    HttpResponse::Ok().json(format!("Connected, {:?}", sim.drones))
+async fn test_connection()  -> impl Responder {
+    HttpResponse::Ok().json("Connected")
 }
 
 #[post("/do_step")]
@@ -38,30 +37,18 @@ async fn do_step(sim: web::Data<Simulator>, coor: web::Json<Coordinate>) -> impl
     let y = coor.y;
 
     sim.do_step(x, y);
-    HttpResponse::Ok().json(format!("Test of appstate: 3 = , {:?}", sim.drones))
+    HttpResponse::Ok()
 }
 
 #[get("/get_drones")]
 async fn get_drones(sim: web::Data<Simulator>) -> impl Responder {
     println!("getting drones");
-    let mut drones: Vec<Vec<usize>> = Vec::new();
-    let mut drone: Vec<usize> = Vec::new();
-    drone.push(1);
-    drone.push(20);
-    drone.push(50);
-    drones.push(drone);
-
-    let mut drone2: Vec<usize> = Vec::new();
-    drone2.push(2);
-    drone2.push(10);
-    drone2.push(500);
-    drones.push(drone2);
     HttpResponse::Ok().json(sim.get_drones())
 }
 
 #[get("/is_finished")]
 async fn is_finished(sim: web::Data<Simulator>) -> impl Responder {
-    println!("IS FINISHED?");
+    println!("Checks if simulations is finished");
     HttpResponse::Ok().json(sim.is_finished())
 }
 
