@@ -74,7 +74,10 @@ impl Simulator {
         };
         sim.start_reader_thread();
         make_edges(&sim);
-        run_drones(&sim);
+
+        if env::consts::OS == "windows" {
+            run_drones(&sim);
+        }
 
         sim
     }
