@@ -1,16 +1,16 @@
 mod simulator;
 
-use simulator::Simulator;
 use simulator::Coordinate;
+use simulator::Simulator;
 
 use actix_cors::Cors;
-use actix_web::{get, post, put, web, App, HttpServer, HttpResponse, Responder};
+use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let sim = Simulator::new();
     println!("started");
-    
+
     HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 #[get("/test_connection")]
-async fn test_connection()  -> impl Responder {
+async fn test_connection() -> impl Responder {
     HttpResponse::Ok().json("Connected")
 }
 
@@ -57,4 +57,3 @@ async fn update_drones(sim: web::Data<Simulator>) -> impl Responder {
     sim.update_drones();
     HttpResponse::Ok()
 }
-
